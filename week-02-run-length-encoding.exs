@@ -1,6 +1,10 @@
 
 defmodule RunLength do
 
+  @moduledoc """
+  http://elixirquiz.github.io/2014-08-16-run-length-encoding.html
+  """
+
   @doc """
   Given a string of uppercase characters in the range A-Z, replace runs of
   sequential characters with a single instance of that value preceded by the
