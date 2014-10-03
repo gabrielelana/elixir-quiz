@@ -1,6 +1,10 @@
 
-
 defmodule FizzBuzz do
+
+  @moduledoc """
+  http://elixirquiz.github.io/2014-08-11-fizzbuzz.html
+  """
+
   @doc """
   Print the numbers from 1 to 100, replacing multiples of 3 with the word Fizz
   and multiples of 5 with the word Buzz. For numbers that are divisible by 3
