@@ -40,7 +40,7 @@ defmodule Poker do
   defmodule Deck do
     alias Poker.Card, as: Card
 
-    @type t :: list(Card.t)
+    @type t :: [Card.t]
 
     @cards for rank <- Card.ranks, suit <- Card.suits, do: {rank, suit}
 
