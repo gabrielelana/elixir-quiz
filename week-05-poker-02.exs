@@ -33,17 +33,41 @@ defmodule Poker do
     end
 
     @spec rank_of(rank) :: number
-    defp rank_of(:ace), do: 14
-    defp rank_of(:king), do: 13
-    defp rank_of(:queen), do: 12
-    defp rank_of(:jack), do: 11
-    defp rank_of(n) when is_integer(n) and n in 1..10, do: n
+    def rank_of(:ace), do: 14
+    def rank_of(:king), do: 13
+    def rank_of(:queen), do: 12
+    def rank_of(:jack), do: 11
+    def rank_of(n) when is_integer(n) and n in 1..10, do: n
   end
 
   defmodule Hand do
     alias Poker.Card, as: Card
 
     @type t :: [Card.t]
+
+    def identify(hand) do
+      hand |> Enum.sort(&Card.sorter/2) |> identify(:sorted)
+    end
+
+    defp identify(hand = [_, _, _, _, {r5, _}], :sorted) do
+      case {flush?(hand), straight?(hand)} do
+        {true, true} -> {:straight_flush, r5}
+        {true, false} -> {:flush, r5}
+        {false, true} -> {:straight, r5}
+        _ -> :nothing
+      end
+    end
+
+    defp straight?(hand) do
+      hand
+        |> Enum.map(fn({r, _}) -> r end)
+        |> Enum.chunk(2, 1)
+        |> Enum.map(fn([r1, r2]) -> Card.rank_of(r2) - Card.rank_of(r1) end)
+        |> Enum.all?(&(&1 == 1))
+    end
+
+    defp flush?([{_, s}, {_, s}, {_, s}, {_, s}, {_, s}]), do: true
+    defp flush?(_), do: false
   end
 
   defmodule Deck do
@@ -83,6 +107,7 @@ defmodule PokerTest do
   use ExUnit.Case, async: true
 
   alias Poker.Deck
+  alias Poker.Hand
 
   test "Deck.deal_hands_to/1 deal hands of cards to a number of players" do
     deck = Deck.new
@@ -90,5 +115,30 @@ defmodule PokerTest do
     assert length(h1) == 5
     assert length(h2) == 5
     assert Set.intersection(Enum.into(h1, HashSet.new), Enum.into(h2, HashSet.new)) == HashSet.new
+  end
+
+  test "Hand.identify/1 can idenity a straight flush" do
+    assert Hand.identify([{2, :spades}, {3, :spades}, {4, :spades}, {5, :spades}, {6, :spades}]) ==
+      {:straight_flush, 6}
+    assert Hand.identify([{6, :spades}, {5, :spades}, {4, :spades}, {2, :spades}, {3, :spades}]) ==
+      {:straight_flush, 6}
+    assert Hand.identify([{1, :spades}, {2, :spades}, {3, :spades}, {4, :spades}, {5, :spades}]) ==
+      {:straight_flush, 5}
+    assert Hand.identify([{:ace, :spades}, {:king, :spades}, {:queen, :spades}, {:jack, :spades}, {10, :spades}]) ==
+      {:straight_flush, :ace}
+  end
+
+  test "Hand.identify/1 can idenity a flush" do
+    assert Hand.identify([{2, :spades}, {4, :spades}, {6, :spades}, {7, :spades}, {8, :spades}]) ==
+      {:flush, 8}
+  end
+
+  test "Hand.identify/1 can idenity a straight" do
+    assert Hand.identify([{2, :spades}, {3, :diamonds}, {4, :spades}, {5, :spades}, {6, :spades}]) ==
+      {:straight, 6}
+  end
+
+  test "Deck.winner/1 determines the winner in a list of hands" do
+
   end
 end
