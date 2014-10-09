@@ -55,6 +55,7 @@ defmodule Poker do
         four_of_a_kind?(hand) -> :four_of_a_kind
         straight?(hand) -> :straight
         three_of_a_kind?(hand) -> :three_of_a_kind
+        two_pair?(hand) -> :two_pair
         one_pair?(hand) -> :one_pair
         flush?(hand) -> :flush
       end
@@ -68,6 +69,11 @@ defmodule Poker do
     defp three_of_a_kind?([{_, _}, {r, _}, {r, _}, {r, _}, {_, _}]), do: true
     defp three_of_a_kind?([{_, _}, {_, _}, {r, _}, {r, _}, {r, _}]), do: true
     defp three_of_a_kind?(_), do: false
+
+    defp two_pair?([{r1, _}, {r1, _}, {r2, _}, {r2, _}, {_, _}]), do: true
+    defp two_pair?([{_, _}, {r1, _}, {r1, _}, {r2, _}, {r2, _}]), do: true
+    defp two_pair?([{r1, _}, {r1, _}, {_, _}, {r2, _}, {r2, _}]), do: true
+    defp two_pair?(_), do: false
 
     defp one_pair?([{r, _}, {r, _}, {_, _}, {_, _}, {_, _}]), do: true
     defp one_pair?([{_, _}, {r, _}, {r, _}, {_, _}, {_, _}]), do: true
@@ -183,6 +189,15 @@ defmodule PokerTest do
       :one_pair
     assert Hand.identify([{1, :clubs}, {2, :hearts}, {3, :spades}, {6, :diamonds}, {6, :spades}]) ==
       :one_pair
+  end
+
+  test "Hand.identify/1 can identify two pair" do
+    assert Hand.identify([{1, :spades}, {1, :diamonds}, {2, :clubs}, {2, :hearts}, {6, :spades}]) ==
+      :two_pair
+    assert Hand.identify([{1, :spades}, {1, :diamonds}, {2, :clubs}, {3, :hearts}, {3, :spades}]) ==
+      :two_pair
+    assert Hand.identify([{1, :spades}, {2, :diamonds}, {2, :clubs}, {3, :hearts}, {3, :spades}]) ==
+      :two_pair
   end
 
   test "Deck.winner/1 determines the winner in a list of hands" do
