@@ -54,6 +54,7 @@ defmodule Poker do
         straight?(hand) and flush?(hand) -> :straight_flush
         four_of_a_kind?(hand) -> :four_of_a_kind
         straight?(hand) -> :straight
+        three_of_a_kind?(hand) -> :three_of_a_kind
         flush?(hand) -> :flush
       end
     end
@@ -61,6 +62,12 @@ defmodule Poker do
     defp four_of_a_kind?([{r, _}, {r, _}, {r, _}, {r, _}, {_, _}]), do: true
     defp four_of_a_kind?([{_, _}, {r, _}, {r, _}, {r, _}, {r, _}]), do: true
     defp four_of_a_kind?(_), do: false
+
+    defp three_of_a_kind?([{r, _}, {r, _}, {r, _}, {_, _}, {_, _}]), do: true
+    defp three_of_a_kind?([{_, _}, {r, _}, {r, _}, {r, _}, {_, _}]), do: true
+    defp three_of_a_kind?([{_, _}, {_, _}, {r, _}, {r, _}, {r, _}]), do: true
+    defp three_of_a_kind?(_), do: false
+
 
     defp straight?(hand) do
       hand
@@ -150,6 +157,13 @@ defmodule PokerTest do
       :four_of_a_kind
     assert Hand.identify([{:queen, :spades}, {1, :diamonds}, {:queen, :clubs}, {:queen, :hearts}, {:queen, :diamonds}]) ==
       :four_of_a_kind
+  end
+
+  test "Hand.identify/1 can identify three of a kind" do
+    assert Hand.identify([{1, :spades}, {1, :diamonds}, {1, :clubs}, {4, :hearts}, {6, :spades}]) ==
+      :three_of_a_kind
+    assert Hand.identify([{1, :spades}, {2, :diamonds}, {1, :clubs}, {1, :hearts}, {6, :spades}]) ==
+      :three_of_a_kind
   end
 
   test "Deck.winner/1 determines the winner in a list of hands" do
