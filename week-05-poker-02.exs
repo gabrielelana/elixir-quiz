@@ -32,7 +32,8 @@ defmodule Poker do
       rank_of(lr) - rank_of(rr)
     end
 
-    @spec rank_of(rank) :: number
+    @spec rank_of(rank | t) :: number
+    def rank_of({rank, _}), do: rank_of(rank)
     def rank_of(:ace), do: 14
     def rank_of(:king), do: 13
     def rank_of(:queen), do: 12
@@ -41,12 +42,12 @@ defmodule Poker do
   end
 
   defmodule Hand do
-    alias Poker.Card, as: Card
+    import Poker.Card, only: [sorter: 2, rank_of: 1]
 
-    @type t :: [Card.t]
+    @type t :: [Poker.Card.t]
 
     def identify(hand) do
-      hand |> Enum.sort(&Card.sorter/2) |> identify(:sorted)
+      hand |> Enum.sort(&sorter/2) |> identify(:sorted)
     end
 
     defp identify(hand = [_, _, _, _, {highest_rank, _}], :sorted) do
@@ -59,10 +60,9 @@ defmodule Poker do
 
     defp straight?(hand) do
       hand
-        |> Enum.map(fn({r, _}) -> r end)
         |> Enum.chunk(2, 1)
-        |> Enum.map(fn([r1, r2]) -> Card.rank_of(r2) - Card.rank_of(r1) end)
-        |> Enum.all?(&(&1 == 1))
+        |> Enum.map(fn([c1, c2]) -> rank_of(c2) - rank_of(c1) end)
+        == [1,1,1,1]
     end
 
     defp flush?([{_, s}, {_, s}, {_, s}, {_, s}, {_, s}]), do: true
