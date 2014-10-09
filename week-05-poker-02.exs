@@ -46,17 +46,21 @@ defmodule Poker do
 
     @type t :: [Poker.Card.t]
 
-    def identify(hand) do
-      hand |> Enum.sort(&sorter/2) |> identify(:sorted)
-    end
 
-    defp identify(hand = [_, _, _, _, {highest_rank, _}], :sorted) do
+    @spec identify(t) :: atom
+    def identify(hand) do
+      hand = Enum.sort(hand, &sorter/2)
       cond do
-        straight?(hand) and flush?(hand) -> {:straight_flush, highest_rank}
-        straight?(hand) -> {:straight, highest_rank}
-        flush?(hand) -> {:flush, highest_rank}
+        straight?(hand) and flush?(hand) -> :straight_flush
+        four_of_a_kind?(hand) -> :four_of_a_kind
+        straight?(hand) -> :straight
+        flush?(hand) -> :flush
       end
     end
+
+    defp four_of_a_kind?([{r, _}, {r, _}, {r, _}, {r, _}, {_, _}]), do: true
+    defp four_of_a_kind?([{_, _}, {r, _}, {r, _}, {r, _}, {r, _}]), do: true
+    defp four_of_a_kind?(_), do: false
 
     defp straight?(hand) do
       hand
@@ -118,23 +122,34 @@ defmodule PokerTest do
 
   test "Hand.identify/1 can identify a straight flush" do
     assert Hand.identify([{2, :spades}, {3, :spades}, {4, :spades}, {5, :spades}, {6, :spades}]) ==
-      {:straight_flush, 6}
+      :straight_flush
     assert Hand.identify([{6, :spades}, {5, :spades}, {4, :spades}, {2, :spades}, {3, :spades}]) ==
-      {:straight_flush, 6}
+      :straight_flush
     assert Hand.identify([{1, :spades}, {2, :spades}, {3, :spades}, {4, :spades}, {5, :spades}]) ==
-      {:straight_flush, 5}
+      :straight_flush
     assert Hand.identify([{:ace, :spades}, {:king, :spades}, {:queen, :spades}, {:jack, :spades}, {10, :spades}]) ==
-      {:straight_flush, :ace}
+      :straight_flush
   end
 
   test "Hand.identify/1 can identify a flush" do
     assert Hand.identify([{2, :spades}, {4, :spades}, {6, :spades}, {7, :spades}, {8, :spades}]) ==
-      {:flush, 8}
+      :flush
   end
 
   test "Hand.identify/1 can identify a straight" do
     assert Hand.identify([{2, :spades}, {3, :diamonds}, {4, :spades}, {5, :spades}, {6, :spades}]) ==
-      {:straight, 6}
+      :straight
+  end
+
+  test "Hand.identify/1 can identify four of a kind" do
+    assert Hand.identify([{1, :spades}, {1, :diamonds}, {1, :clubs}, {1, :hearts}, {6, :spades}]) ==
+      :four_of_a_kind
+    assert Hand.identify([{6, :spades}, {1, :diamonds}, {1, :clubs}, {1, :hearts}, {1, :spades}]) ==
+      :four_of_a_kind
+    assert Hand.identify([{:queen, :spades}, {:queen, :diamonds}, {:queen, :clubs}, {:queen, :hearts}, {1, :spades}]) ==
+      :four_of_a_kind
+    assert Hand.identify([{:queen, :spades}, {1, :diamonds}, {:queen, :clubs}, {:queen, :hearts}, {:queen, :diamonds}]) ==
+      :four_of_a_kind
   end
 
   test "Deck.winner/1 determines the winner in a list of hands" do
