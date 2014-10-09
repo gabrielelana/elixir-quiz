@@ -59,6 +59,7 @@ defmodule Poker do
         three_of_a_kind?(hand) -> :three_of_a_kind
         two_pair?(hand) -> :two_pair
         one_pair?(hand) -> :one_pair
+        true -> :high_card
       end
     end
 
@@ -210,6 +211,11 @@ defmodule PokerTest do
       :full_house
     assert Hand.identify([{2, :spades}, {2, :diamonds}, {2, :clubs}, {1, :hearts}, {1, :spades}]) ==
       :full_house
+  end
+
+  test "Hand.identify/1 can identify high card" do
+    assert Hand.identify([{1, :spades}, {3, :diamonds}, {5, :clubs}, {:queen, :hearts}, {8, :spades}]) ==
+      :high_card
   end
 
   test "Deck.winner/1 determines the winner in a list of hands" do
