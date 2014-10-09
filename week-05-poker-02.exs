@@ -49,12 +49,11 @@ defmodule Poker do
       hand |> Enum.sort(&Card.sorter/2) |> identify(:sorted)
     end
 
-    defp identify(hand = [_, _, _, _, {r5, _}], :sorted) do
-      case {flush?(hand), straight?(hand)} do
-        {true, true} -> {:straight_flush, r5}
-        {true, false} -> {:flush, r5}
-        {false, true} -> {:straight, r5}
-        _ -> :nothing
+    defp identify(hand = [_, _, _, _, {highest_rank, _}], :sorted) do
+      cond do
+        straight?(hand) and flush?(hand) -> {:straight_flush, highest_rank}
+        straight?(hand) -> {:straight, highest_rank}
+        flush?(hand) -> {:flush, highest_rank}
       end
     end
 
