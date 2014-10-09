@@ -116,7 +116,7 @@ defmodule PokerTest do
     assert Set.intersection(Enum.into(h1, HashSet.new), Enum.into(h2, HashSet.new)) == HashSet.new
   end
 
-  test "Hand.identify/1 can idenity a straight flush" do
+  test "Hand.identify/1 can identify a straight flush" do
     assert Hand.identify([{2, :spades}, {3, :spades}, {4, :spades}, {5, :spades}, {6, :spades}]) ==
       {:straight_flush, 6}
     assert Hand.identify([{6, :spades}, {5, :spades}, {4, :spades}, {2, :spades}, {3, :spades}]) ==
@@ -127,12 +127,12 @@ defmodule PokerTest do
       {:straight_flush, :ace}
   end
 
-  test "Hand.identify/1 can idenity a flush" do
+  test "Hand.identify/1 can identify a flush" do
     assert Hand.identify([{2, :spades}, {4, :spades}, {6, :spades}, {7, :spades}, {8, :spades}]) ==
       {:flush, 8}
   end
 
-  test "Hand.identify/1 can idenity a straight" do
+  test "Hand.identify/1 can identify a straight" do
     assert Hand.identify([{2, :spades}, {3, :diamonds}, {4, :spades}, {5, :spades}, {6, :spades}]) ==
       {:straight, 6}
   end
