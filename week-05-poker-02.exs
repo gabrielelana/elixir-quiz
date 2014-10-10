@@ -83,6 +83,33 @@ defmodule Poker do
       end)
     end
 
+    @spec winner([{String.t, t} | {String.t, [String.t]}]) :: String.t | {:split, [String.t]}
+    def winner([{name, _}]), do: name
+    def winner([{n1, h1}, {n2, h2} | hs]) do
+      case compare(h1, h2) do
+        n when n > 0 -> winner([{n1, h1} | hs])
+        n when n < 0 -> winner([{n2, h2} | hs])
+        _ ->
+          case {n1, n2} do
+            {{:split, ns1}, {:split, ns2}} -> winner([{{:split, ns1 ++ ns2}, h1} | hs])
+            {{:split, ns1}, _} -> winner([{{:split, [n2 | ns1]}, h1} | hs])
+            {_, {:split, ns2}} -> winner([{{:split, [n1 | ns2]}, h1} | hs])
+            {_, _} -> winner([{{:split, [n1, n2]}, h1} | hs])
+          end
+      end
+    end
+
+    @spec compare(t, t) :: number
+    def compare(h1, h2) do
+      rank_of(h1) - rank_of(h2)
+    end
+
+    @spec sorter(t, t) :: boolean
+    def sorter({lr, _}, {rr, _}) do
+      rank_of(lr) <= rank_of(rr)
+    end
+
+
     @spec rank_of(t | {kind_of_hand, tuple} | binary) :: number
     def rank_of(<<r::size(32)>>), do: r
     def rank_of({_, {r1, r2}}), do: rank_of(<<r1::size(8), r2::size(8), 0::size(16)>>)
@@ -175,6 +202,24 @@ defmodule PokerTest do
     assert length(h1) == 5
     assert length(h2) == 5
     assert Set.intersection(Enum.into(h1, HashSet.new), Enum.into(h2, HashSet.new)) == HashSet.new
+  end
+
+  test "find a winner" do
+    assert Hand.winner([
+      {"Gabriele", ~w{2S 3S 4S 5S 6S}},
+      {"Antonio", ~w{2D 2H 5C 5D 7S}}
+    ]) == "Gabriele"
+
+    assert Hand.winner([
+      {"Gabriele", ~w{2S 2D 3S 3D 6S}},
+      {"Antonio", ~w{2C 2H 3D 3H 6H}}
+    ]) == {:split, ["Gabriele", "Antonio"]}
+
+    assert Hand.winner([
+      {"Gabriele", ~w{1S 2S 3S 4S 5S}},
+      {"Antonio", ~w{1D 2D 3D 4D 5D}},
+      {"Michele", ~w{1C 2C 3C 4C 5C}}
+    ]) == {:split, ["Michele", "Gabriele", "Antonio"]}
   end
 
   test "compare hands" do
