@@ -66,6 +66,13 @@ defmodule Poker do
 
     @type t :: [Poker.Card.t]
 
+    @spec rank_of(t | {atom, tuple} | binary) :: number
+    def rank_of(<<r::size(32)>>), do: r
+    def rank_of({_, {r1, r2}}), do: rank_of(<<r1::size(8), r2::size(8), 0::size(16)>>)
+    def rank_of({_, {r1, r2, r3}}), do: rank_of(<<r1::size(8), r2::size(8), r3::size(8), 0::size(8)>>)
+    def rank_of({_, {r1, r2, r3, r4}}), do: rank_of(<<r1::size(8), r2::size(8), r3::size(8), r4::size(8)>>)
+    def rank_of(hand), do: rank_of(identify(hand))
+
     @spec parse([String.t | t]) :: t
     def parse(hand) do
       hand |> Enum.map(fn
@@ -74,7 +81,7 @@ defmodule Poker do
       end)
     end
 
-    @spec identify(t) :: atom
+    @spec identify(t) :: {atom, rank::tuple}
     def identify(hand) do
       do_identify(
         hand
@@ -159,6 +166,17 @@ defmodule PokerTest do
     assert length(h1) == 5
     assert length(h2) == 5
     assert Set.intersection(Enum.into(h1, HashSet.new), Enum.into(h2, HashSet.new)) == HashSet.new
+  end
+
+  test "compare hands" do
+    assert Hand.rank_of(~w{2S 3S 4S 5S 6S}) > Hand.rank_of(~w{1S 2S 3S 4S 5S})
+    assert Hand.rank_of(~w{2S 3S 4S 5S 6S}) > Hand.rank_of(~w{1S 1D 1C 1H 6S})
+    assert Hand.rank_of(~w{2S 2D 3S 3D 6S}) > Hand.rank_of(~w{2C 2H 3D 3H 5S})
+    assert Hand.rank_of(~w{4S 4D 4C 2D 2S}) > Hand.rank_of(~w{3S 3D 3C AH AS})
+    assert Hand.rank_of(~w{1S 3D 5C QH 8S}) > Hand.rank_of(~w{1D 3H 5C JH 8H})
+
+    assert Hand.rank_of(~w{2S 2D 3S 3D 6S}) == Hand.rank_of(~w{2C 2H 3D 3H 6H})
+    assert Hand.rank_of(~w{2S 3S 4S 5S 6S}) == Hand.rank_of(~w{2C 3C 4C 5C 6C})
   end
 
   test "identify and rank a straight flush" do
