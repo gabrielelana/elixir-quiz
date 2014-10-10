@@ -76,53 +76,42 @@ defmodule Poker do
 
     @spec identify(t) :: atom
     def identify(hand) do
-      hand = hand |> parse |> Enum.sort(&Card.sorter/2)
-      cond do
-        straight?(hand) and flush?(hand) -> :straight_flush
-        four_of_a_kind?(hand) -> :four_of_a_kind
-        full_house?(hand) -> :full_house
-        flush?(hand) -> :flush
-        straight?(hand) -> :straight
-        three_of_a_kind?(hand) -> :three_of_a_kind
-        two_pair?(hand) -> :two_pair
-        one_pair?(hand) -> :one_pair
-        true -> :high_card
-      end
+      do_identify(
+        hand
+          |> parse
+          |> Enum.sort(&Card.sorter/2)
+          |> Enum.map(fn(c = {_, s}) -> {Card.rank_of(c), s} end)
+      )
     end
 
-    defp four_of_a_kind?([{r, _}, {r, _}, {r, _}, {r, _}, {_, _}]), do: true
-    defp four_of_a_kind?([{_, _}, {r, _}, {r, _}, {r, _}, {r, _}]), do: true
-    defp four_of_a_kind?(_), do: false
+    defp do_identify([{r1, s}, {r2, s}, {r3, s}, {r4, s}, {r5, s}])
+      when [r2 - r1, r3 - r2, r4 - r3, r5 - r4] == [1, 1, 1, 1], do: {:straight_flush, {9, r5}}
 
-    defp full_house?([{r1, _}, {r1, _}, {r1, _}, {r2, _}, {r2, _}]), do: true
-    defp full_house?([{r2, _}, {r2, _}, {r1, _}, {r1, _}, {r1, _}]), do: true
-    defp full_house?(_), do: false
+    defp do_identify([{r1, _}, {r1, _}, {r1, _}, {r1, _}, {r2, _}]), do: {:four_of_a_kind, {8, r1, r2}}
+    defp do_identify([{r1, _}, {r2, _}, {r2, _}, {r2, _}, {r2, _}]), do: {:four_of_a_kind, {8, r2, r1}}
 
-    defp three_of_a_kind?([{r, _}, {r, _}, {r, _}, {_, _}, {_, _}]), do: true
-    defp three_of_a_kind?([{_, _}, {r, _}, {r, _}, {r, _}, {_, _}]), do: true
-    defp three_of_a_kind?([{_, _}, {_, _}, {r, _}, {r, _}, {r, _}]), do: true
-    defp three_of_a_kind?(_), do: false
+    defp do_identify([{r1, _}, {r1, _}, {r1, _}, {r2, _}, {r2, _}]), do: {:full_house, {7, r1, r2}}
+    defp do_identify([{r2, _}, {r2, _}, {r1, _}, {r1, _}, {r1, _}]), do: {:full_house, {7, r1, r2}}
 
-    defp two_pair?([{r1, _}, {r1, _}, {r2, _}, {r2, _}, {_, _}]), do: true
-    defp two_pair?([{_, _}, {r1, _}, {r1, _}, {r2, _}, {r2, _}]), do: true
-    defp two_pair?([{r1, _}, {r1, _}, {_, _}, {r2, _}, {r2, _}]), do: true
-    defp two_pair?(_), do: false
+    defp do_identify([{_, s}, {_, s}, {_, s}, {_, s}, {r5, s}]), do: {:flush, {6, r5}}
 
-    defp one_pair?([{r, _}, {r, _}, {_, _}, {_, _}, {_, _}]), do: true
-    defp one_pair?([{_, _}, {r, _}, {r, _}, {_, _}, {_, _}]), do: true
-    defp one_pair?([{_, _}, {_, _}, {r, _}, {r, _}, {_, _}]), do: true
-    defp one_pair?([{_, _}, {_, _}, {_, _}, {r, _}, {r, _}]), do: true
-    defp one_pair?(_), do: false
+    defp do_identify([{r1, _}, {r2, _}, {r3, _}, {r4, _}, {r5, _}])
+      when [r2 - r1, r3 - r2, r4 - r3, r5 - r4] == [1, 1, 1, 1], do: {:straight, {5, r5}}
 
-    defp straight?(hand) do
-      hand
-        |> Enum.chunk(2, 1)
-        |> Enum.map(fn([c1, c2]) -> Card.rank_of(c2) - Card.rank_of(c1) end)
-        == [1,1,1,1]
-    end
+    defp do_identify([{r1, _}, {r1, _}, {r1, _}, {_, _}, {_, _}]), do: {:three_of_a_kind, {4, r1}}
+    defp do_identify([{_, _}, {r2, _}, {r2, _}, {r2, _}, {_, _}]), do: {:three_of_a_kind, {4, r2}}
+    defp do_identify([{_, _}, {_, _}, {r3, _}, {r3, _}, {r3, _}]), do: {:three_of_a_kind, {4, r3}}
 
-    defp flush?([{_, s}, {_, s}, {_, s}, {_, s}, {_, s}]), do: true
-    defp flush?(_), do: false
+    defp do_identify([{r1, _}, {r1, _}, {r2, _}, {r2, _}, {r3, _}]), do: {:two_pair, {3, r2, r1, r3}}
+    defp do_identify([{r1, _}, {r2, _}, {r2, _}, {r3, _}, {r3, _}]), do: {:two_pair, {3, r3, r2, r1}}
+    defp do_identify([{r1, _}, {r1, _}, {r2, _}, {r3, _}, {r3, _}]), do: {:two_pair, {3, r3, r1, r2}}
+
+    defp do_identify([{r1, _}, {r1, _}, {_, _}, {_, _}, {r4, _}]), do: {:one_pair, {2, r1, r4}}
+    defp do_identify([{_, _}, {r2, _}, {r2, _}, {_, _}, {r4, _}]), do: {:one_pair, {2, r2, r4}}
+    defp do_identify([{_, _}, {_, _}, {r3, _}, {r3, _}, {r4, _}]), do: {:one_pair, {2, r3, r4}}
+    defp do_identify([{_, _}, {_, _}, {r3, _}, {r4, _}, {r4, _}]), do: {:one_pair, {2, r4, r3}}
+
+    defp do_identify([{_, _}, {_, _}, {_, _}, {_, _}, {r5, _}]), do: {:high_card, {1, r5}}
   end
 
   defmodule Deck do
@@ -172,54 +161,55 @@ defmodule PokerTest do
     assert Set.intersection(Enum.into(h1, HashSet.new), Enum.into(h2, HashSet.new)) == HashSet.new
   end
 
-  test "identify a straight flush" do
-    assert Hand.identify(~w{2S 3S 4S 5S 6S}) == :straight_flush
-    assert Hand.identify(~w{6S 5S 4S 2S 3S}) == :straight_flush
-    assert Hand.identify(~w{1S 2S 3S 4S 5S}) == :straight_flush
-    assert Hand.identify(~w{AS KS QS JS 10S}) == :straight_flush
+  test "identify and rank a straight flush" do
+    assert Hand.identify(~w{2S 3S 4S 5S 6S}) == {:straight_flush, {9, 6}}
+    assert Hand.identify(~w{6S 5S 4S 2S 3S}) == {:straight_flush, {9, 6}}
+    assert Hand.identify(~w{1S 2S 3S 4S 5S}) == {:straight_flush, {9, 5}}
+    assert Hand.identify(~w{AS KS QS JS 10S}) == {:straight_flush, {9, 14}}
   end
 
-  test "identify a flush" do
-    assert Hand.identify(~w{2S 4S 6S 7S 8S}) == :flush
+  test "identify and rank four of a kind" do
+    assert Hand.identify(~w{1S 1D 1C 1H 6S}) == {:four_of_a_kind, {8, 1, 6}}
+    assert Hand.identify(~w{6S 1D 1C 1H 1S}) == {:four_of_a_kind, {8, 1, 6}}
+    assert Hand.identify(~w{QS QD QC QH 1S}) == {:four_of_a_kind, {8, 12, 1}}
+    assert Hand.identify(~w{QS 1D QC QH QD}) == {:four_of_a_kind, {8, 12, 1}}
   end
 
-  test "Hand.identify/1 can identify a straight" do
-    assert Hand.identify(~w{2S 3D 4S 5S 6S}) == :straight
+  test "identify and rank full house" do
+    assert Hand.identify(~w{1S 1D 2C 2H 2S}) == {:full_house, {7, 2, 1}}
+    assert Hand.identify(~w{2S 2D 2C 1H 1S}) == {:full_house, {7, 2, 1}}
+    assert Hand.identify(~w{1S 1D 1C 2H 2S}) == {:full_house, {7, 1, 2}}
   end
 
-  test "identify four of a kind" do
-    assert Hand.identify(~w{1S 1D 1C 1H 6S}) == :four_of_a_kind
-    assert Hand.identify(~w{6S 1D 1C 1H 1S}) == :four_of_a_kind
-    assert Hand.identify(~w{QS QD QC QH 1S}) == :four_of_a_kind
-    assert Hand.identify(~w{QS 1D QC QH QD}) == :four_of_a_kind
+  test "identify and rank a flush" do
+    assert Hand.identify(~w{2S 4S 6S 7S 8S}) == {:flush, {6, 8}}
   end
 
-  test "identify three of a kind" do
-    assert Hand.identify(~w{1S 1D 1C 4H 6S}) == :three_of_a_kind
-    assert Hand.identify(~w{1S 2D 2C 2H 6S}) == :three_of_a_kind
-    assert Hand.identify(~w{1S 2D 3C 3H 3S}) == :three_of_a_kind
+  test "identify and rank a straight" do
+    assert Hand.identify(~w{2S 3D 4S 5S 6S}) == {:straight, {5, 6}}
   end
 
-  test "identify one pair" do
-    assert Hand.identify(~w{1S 1D 2C 3H 6S}) == :one_pair
-    assert Hand.identify(~w{1C 2S 2D 3H 6S}) == :one_pair
-    assert Hand.identify(~w{1C 2S 3D 3H 6S}) == :one_pair
-    assert Hand.identify(~w{1C 2S 3D 6H 6S}) == :one_pair
+  test "identify and rank three of a kind" do
+    assert Hand.identify(~w{1S 1D 1C 4H 6S}) == {:three_of_a_kind, {4, 1}}
+    assert Hand.identify(~w{1S 2D 2C 2H 6S}) == {:three_of_a_kind, {4, 2}}
+    assert Hand.identify(~w{1S 2D 3C 3H 3S}) == {:three_of_a_kind, {4, 3}}
   end
 
-  test "identify two pair" do
-    assert Hand.identify(~w{1S 1D 2C 2H 6S}) == :two_pair
-    assert Hand.identify(~w{1S 1D 2C 3H 3S}) == :two_pair
-    assert Hand.identify(~w{1S 2D 2C 3H 3S}) == :two_pair
+  test "identify and rank two pair" do
+    assert Hand.identify(~w{1S 1D 2C 2H 6S}) == {:two_pair, {3, 2, 1, 6}}
+    assert Hand.identify(~w{1S 1D 2C 3H 3S}) == {:two_pair, {3, 3, 1, 2}}
+    assert Hand.identify(~w{1S 2D 2C 3H 3S}) == {:two_pair, {3, 3, 2, 1}}
   end
 
-  test "identify full house" do
-    assert Hand.identify(~w{1S 1D 2C 2H 2S}) == :full_house
-    assert Hand.identify(~w{2S 2D 2C 1H 1S}) == :full_house
+  test "identify and rank one pair" do
+    assert Hand.identify(~w{1S 1D 2C 3H 6S}) == {:one_pair, {2, 1, 6}}
+    assert Hand.identify(~w{1C 2S 2D 3H 6S}) == {:one_pair, {2, 2, 6}}
+    assert Hand.identify(~w{1C 2S 3D 3H 6S}) == {:one_pair, {2, 3, 6}}
+    assert Hand.identify(~w{1C 2S 3D 6H 6S}) == {:one_pair, {2, 6, 3}}
   end
 
-  test "Hand.identify/1 can identify high card" do
-    assert Hand.identify(~w{1S 3D 5C QH 8S}) == :high_card
+  test "identify and rank high card" do
+    assert Hand.identify(~w{1S 3D 5C QH 8S}) == {:high_card, {1, 12}}
   end
 
   test "Deck.winner/1 determines the winner in a list of hands" do
