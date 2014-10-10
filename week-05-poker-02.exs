@@ -65,13 +65,15 @@ defmodule Poker do
     alias Poker.Card
 
     @type t :: [Poker.Card.t]
-
-    @spec rank_of(t | {atom, tuple} | binary) :: number
-    def rank_of(<<r::size(32)>>), do: r
-    def rank_of({_, {r1, r2}}), do: rank_of(<<r1::size(8), r2::size(8), 0::size(16)>>)
-    def rank_of({_, {r1, r2, r3}}), do: rank_of(<<r1::size(8), r2::size(8), r3::size(8), 0::size(8)>>)
-    def rank_of({_, {r1, r2, r3, r4}}), do: rank_of(<<r1::size(8), r2::size(8), r3::size(8), r4::size(8)>>)
-    def rank_of(hand), do: rank_of(identify(hand))
+    @type kind_of_hand :: :straight_flush |
+                          :four_of_a_kind |
+                          :full_house |
+                          :flush |
+                          :straight |
+                          :three_of_a_kind |
+                          :two_pair |
+                          :one_pair |
+                          :high_card
 
     @spec parse([String.t | t]) :: t
     def parse(hand) do
@@ -81,7 +83,14 @@ defmodule Poker do
       end)
     end
 
-    @spec identify(t) :: {atom, rank::tuple}
+    @spec rank_of(t | {kind_of_hand, tuple} | binary) :: number
+    def rank_of(<<r::size(32)>>), do: r
+    def rank_of({_, {r1, r2}}), do: rank_of(<<r1::size(8), r2::size(8), 0::size(16)>>)
+    def rank_of({_, {r1, r2, r3}}), do: rank_of(<<r1::size(8), r2::size(8), r3::size(8), 0::size(8)>>)
+    def rank_of({_, {r1, r2, r3, r4}}), do: rank_of(<<r1::size(8), r2::size(8), r3::size(8), r4::size(8)>>)
+    def rank_of(hand), do: rank_of(identify(hand))
+
+    @spec identify(t) :: {kind_of_hand, rank::tuple}
     def identify(hand) do
       do_identify(
         hand
