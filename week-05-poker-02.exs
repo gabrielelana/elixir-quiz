@@ -196,7 +196,7 @@ defmodule PokerTest do
   alias Poker.Deck
   alias Poker.Hand
 
-  test "Deck.deal_hands_to/1 deal hands of cards to a number of players" do
+  test "deal hands of cards to a number of players" do
     deck = Deck.new
     [h1, h2] = Deck.deal_to(deck, 2)
     assert length(h1) == 5
@@ -204,7 +204,7 @@ defmodule PokerTest do
     assert Set.intersection(Enum.into(h1, HashSet.new), Enum.into(h2, HashSet.new)) == HashSet.new
   end
 
-  test "find a winner" do
+  test "find a winner in a list of hands" do
     assert Hand.winner([
       {"Gabriele", ~w{2S 3S 4S 5S 6S}},
       {"Antonio", ~w{2D 2H 5C 5D 7S}}
@@ -282,9 +282,5 @@ defmodule PokerTest do
 
   test "identify and rank high card" do
     assert Hand.identify(~w{1S 3D 5C QH 8S}) == {:high_card, {1, 12}}
-  end
-
-  test "Deck.winner/1 determines the winner in a list of hands" do
-
   end
 end
