@@ -36,7 +36,6 @@ defmodule Poker do
     def parse("4" <> suit), do: parse(4, suit)
     def parse("3" <> suit), do: parse(3, suit)
     def parse("2" <> suit), do: parse(2, suit)
-    def parse("1" <> suit), do: parse(1, suit)
     defp parse(rank, "C"), do: {rank, :clubs}
     defp parse(rank, "D"), do: {rank, :diamonds}
     defp parse(rank, "H"), do: {rank, :hearts}
@@ -109,22 +108,37 @@ defmodule Poker do
       rank_of(lr) <= rank_of(rr)
     end
 
-
     @spec rank_of(t | {kind_of_hand, tuple} | binary) :: number
-    def rank_of(<<r::size(32)>>), do: r
-    def rank_of({_, {r1, r2}}), do: rank_of(<<r1::size(8), r2::size(8), 0::size(16)>>)
-    def rank_of({_, {r1, r2, r3}}), do: rank_of(<<r1::size(8), r2::size(8), r3::size(8), 0::size(8)>>)
-    def rank_of({_, {r1, r2, r3, r4}}), do: rank_of(<<r1::size(8), r2::size(8), r3::size(8), r4::size(8)>>)
+    def rank_of(<<r::size(24)>>), do: r
+    def rank_of({_, {r1, r2}}),
+      do: rank_of(<<r1::size(4), r2::size(4), 0::size(16)>>)
+    def rank_of({_, {r1, r2, r3}}),
+      do: rank_of(<<r1::size(4), r2::size(4), r3::size(4), 0::size(12)>>)
+    def rank_of({_, {r1, r2, r3, r4}}),
+      do: rank_of(<<r1::size(4), r2::size(4), r3::size(4), r4::size(4), 0::size(8)>>)
+    def rank_of({_, {r1, r2, r3, r4, r5}}),
+      do: rank_of(<<r1::size(4), r2::size(4), r3::size(4), r4::size(4), r5::size(4), 0::size(4)>>)
+    def rank_of({_, {r1, r2, r3, r4, r5, r6}}),
+      do: rank_of(<<r1::size(4), r2::size(4), r3::size(4), r4::size(4), r5::size(4), r6::size(4)>>)
     def rank_of(hand), do: rank_of(identify(hand))
 
     @spec identify(t) :: {kind_of_hand, rank::tuple}
     def identify(hand) do
-      do_identify(
-        hand
-          |> parse
-          |> Enum.sort(&Card.sorter/2)
-          |> Enum.map(fn(c = {_, s}) -> {Card.rank_of(c), s} end)
-      )
+      [hand]
+        |> Enum.map(&parse/1)
+        |> Enum.flat_map(fn(hand) -> [hand, hand |> aces_as_ones] end)
+        |> Enum.map(fn(hand) ->
+              hand
+              |> Enum.sort(&Card.sorter/2)
+              |> Enum.map(fn(c = {_, s}) -> {Card.rank_of(c), s} end)
+              |> do_identify
+            end)
+        |> Enum.sort_by(&rank_of/1)
+        |> List.last
+    end
+
+    defp aces_as_ones(hand) do
+      hand |> Enum.map(fn {:ace, s} -> {1, s};  c  -> c end)
     end
 
     defp do_identify([{r1, s}, {r2, s}, {r3, s}, {r4, s}, {r5, s}])
@@ -154,7 +168,7 @@ defmodule Poker do
     defp do_identify([{_, _}, {_, _}, {r3, _}, {r3, _}, {r4, _}]), do: {:one_pair, {2, r3, r4}}
     defp do_identify([{_, _}, {_, _}, {r3, _}, {r4, _}, {r4, _}]), do: {:one_pair, {2, r4, r3}}
 
-    defp do_identify([{_, _}, {_, _}, {_, _}, {_, _}, {r5, _}]), do: {:high_card, {1, r5}}
+    defp do_identify([{r1, _}, {r2, _}, {r3, _}, {r4, _}, {r5, _}]), do: {:high_card, {1, r5, r4, r3, r2, r1}}
   end
 
   defmodule Deck do
@@ -216,18 +230,23 @@ defmodule PokerTest do
     ]) == {:split, ["Gabriele", "Antonio"]}
 
     assert Hand.winner([
-      {"Gabriele", ~w{1S 2S 3S 4S 5S}},
-      {"Antonio", ~w{1D 2D 3D 4D 5D}},
-      {"Michele", ~w{1C 2C 3C 4C 5C}}
+      {"Gabriele", ~w{AS 2S 3S 4S 5S}},
+      {"Antonio", ~w{AD 2D 3D 4D 5D}},
+      {"Michele", ~w{AC 2C 3C 4C 5C}}
     ]) == {:split, ["Michele", "Gabriele", "Antonio"]}
   end
 
   test "compare hands" do
-    assert Hand.rank_of(~w{2S 3S 4S 5S 6S}) > Hand.rank_of(~w{1S 2S 3S 4S 5S})
-    assert Hand.rank_of(~w{2S 3S 4S 5S 6S}) > Hand.rank_of(~w{1S 1D 1C 1H 6S})
+    assert Hand.rank_of(~w{2S 3S 4S 5S 6S}) > Hand.rank_of(~w{AS 2S 3S 4S 5S})
+    assert Hand.rank_of(~w{2S 3S 4S 5S 6S}) > Hand.rank_of(~w{AS AD AC AH 6S})
     assert Hand.rank_of(~w{2S 2D 3S 3D 6S}) > Hand.rank_of(~w{2C 2H 3D 3H 5S})
     assert Hand.rank_of(~w{4S 4D 4C 2D 2S}) > Hand.rank_of(~w{3S 3D 3C AH AS})
-    assert Hand.rank_of(~w{1S 3D 5C QH 8S}) > Hand.rank_of(~w{1D 3H 5C JH 8H})
+
+    assert Hand.rank_of(~w{2S 3D 5C 8S QH}) > Hand.rank_of(~w{2D 3H 5D 8H JH})
+    assert Hand.rank_of(~w{2S 3D 5C 8S QH}) > Hand.rank_of(~w{2D 3H 5D 7H QS})
+    assert Hand.rank_of(~w{2S 3D 5C 8S QH}) > Hand.rank_of(~w{2D 3H 4D 8H QS})
+    assert Hand.rank_of(~w{2S 4D 5C 9S QH}) > Hand.rank_of(~w{2D 3H 5D 9H QS})
+    assert Hand.rank_of(~w{3S 4D 5C 9S QH}) > Hand.rank_of(~w{2D 4H 5D 9H QS})
 
     assert Hand.rank_of(~w{2S 2D 3S 3D 6S}) == Hand.rank_of(~w{2C 2H 3D 3H 6H})
     assert Hand.rank_of(~w{2S 3S 4S 5S 6S}) == Hand.rank_of(~w{2C 3C 4C 5C 6C})
@@ -236,51 +255,55 @@ defmodule PokerTest do
   test "identify and rank a straight flush" do
     assert Hand.identify(~w{2S 3S 4S 5S 6S}) == {:straight_flush, {9, 6}}
     assert Hand.identify(~w{6S 5S 4S 2S 3S}) == {:straight_flush, {9, 6}}
-    assert Hand.identify(~w{1S 2S 3S 4S 5S}) == {:straight_flush, {9, 5}}
+    assert Hand.identify(~w{AS 2S 3S 4S 5S}) == {:straight_flush, {9, 5}}
     assert Hand.identify(~w{AS KS QS JS 10S}) == {:straight_flush, {9, 14}}
   end
 
   test "identify and rank four of a kind" do
-    assert Hand.identify(~w{1S 1D 1C 1H 6S}) == {:four_of_a_kind, {8, 1, 6}}
-    assert Hand.identify(~w{6S 1D 1C 1H 1S}) == {:four_of_a_kind, {8, 1, 6}}
-    assert Hand.identify(~w{QS QD QC QH 1S}) == {:four_of_a_kind, {8, 12, 1}}
-    assert Hand.identify(~w{QS 1D QC QH QD}) == {:four_of_a_kind, {8, 12, 1}}
+    assert Hand.identify(~w{AS AD AC AH 6S}) == {:four_of_a_kind, {8, 14, 6}}
+    assert Hand.identify(~w{6S AD AC AH AS}) == {:four_of_a_kind, {8, 14, 6}}
+    assert Hand.identify(~w{QS QD QC QH AS}) == {:four_of_a_kind, {8, 12, 14}}
+    assert Hand.identify(~w{QS AD QC QH QD}) == {:four_of_a_kind, {8, 12, 14}}
   end
 
   test "identify and rank full house" do
-    assert Hand.identify(~w{1S 1D 2C 2H 2S}) == {:full_house, {7, 2, 1}}
-    assert Hand.identify(~w{2S 2D 2C 1H 1S}) == {:full_house, {7, 2, 1}}
-    assert Hand.identify(~w{1S 1D 1C 2H 2S}) == {:full_house, {7, 1, 2}}
+    assert Hand.identify(~w{AS AD 2C 2H 2S}) == {:full_house, {7, 2, 14}}
+    assert Hand.identify(~w{2S 2D 2C AH AS}) == {:full_house, {7, 2, 14}}
+    assert Hand.identify(~w{AS AD AC 2H 2S}) == {:full_house, {7, 14, 2}}
   end
 
   test "identify and rank a flush" do
     assert Hand.identify(~w{2S 4S 6S 7S 8S}) == {:flush, {6, 8}}
+    assert Hand.identify(~w{AS 4S 6S 7S 8S}) == {:flush, {6, 14}}
   end
 
   test "identify and rank a straight" do
     assert Hand.identify(~w{2S 3D 4S 5S 6S}) == {:straight, {5, 6}}
+    assert Hand.identify(~w{AS 2D 3S 4S 5S}) == {:straight, {5, 5}}
+    assert Hand.identify(~w{10S JD QS KS AS}) == {:straight, {5, 14}}
   end
 
   test "identify and rank three of a kind" do
-    assert Hand.identify(~w{1S 1D 1C 4H 6S}) == {:three_of_a_kind, {4, 1}}
-    assert Hand.identify(~w{1S 2D 2C 2H 6S}) == {:three_of_a_kind, {4, 2}}
-    assert Hand.identify(~w{1S 2D 3C 3H 3S}) == {:three_of_a_kind, {4, 3}}
+    assert Hand.identify(~w{AS AD AC 4H 6S}) == {:three_of_a_kind, {4, 14}}
+    assert Hand.identify(~w{AS 2D 2C 2H 6S}) == {:three_of_a_kind, {4, 2}}
+    assert Hand.identify(~w{AS 2D 3C 3H 3S}) == {:three_of_a_kind, {4, 3}}
   end
 
   test "identify and rank two pair" do
-    assert Hand.identify(~w{1S 1D 2C 2H 6S}) == {:two_pair, {3, 2, 1, 6}}
-    assert Hand.identify(~w{1S 1D 2C 3H 3S}) == {:two_pair, {3, 3, 1, 2}}
-    assert Hand.identify(~w{1S 2D 2C 3H 3S}) == {:two_pair, {3, 3, 2, 1}}
+    assert Hand.identify(~w{AS AD 2C 2H 6S}) == {:two_pair, {3, 14, 2, 6}}
+    assert Hand.identify(~w{AS AD 2C 3H 3S}) == {:two_pair, {3, 14, 3, 2}}
+    assert Hand.identify(~w{AS 2D 2C 3H 3S}) == {:two_pair, {3, 3, 2, 14}}
   end
 
   test "identify and rank one pair" do
-    assert Hand.identify(~w{1S 1D 2C 3H 6S}) == {:one_pair, {2, 1, 6}}
-    assert Hand.identify(~w{1C 2S 2D 3H 6S}) == {:one_pair, {2, 2, 6}}
-    assert Hand.identify(~w{1C 2S 3D 3H 6S}) == {:one_pair, {2, 3, 6}}
-    assert Hand.identify(~w{1C 2S 3D 6H 6S}) == {:one_pair, {2, 6, 3}}
+    assert Hand.identify(~w{AS AD 2C 3H 6S}) == {:one_pair, {2, 14, 6}}
+    assert Hand.identify(~w{AC 2S 2D 3H 6S}) == {:one_pair, {2, 2, 14}}
+    assert Hand.identify(~w{AC 2S 3D 3H 6S}) == {:one_pair, {2, 3, 14}}
+    assert Hand.identify(~w{AC 2S 3D 6H 6S}) == {:one_pair, {2, 6, 14}}
   end
 
   test "identify and rank high card" do
-    assert Hand.identify(~w{1S 3D 5C QH 8S}) == {:high_card, {1, 12}}
+    assert Hand.identify(~w{AS 3D 5C QH 8S}) == {:high_card, {1, 14, 12, 8, 5, 3}}
+    assert Hand.identify(~w{2S 3D 5C QH 8S}) == {:high_card, {1, 12, 8, 5, 3, 2}}
   end
 end
