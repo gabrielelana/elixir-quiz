@@ -218,6 +218,69 @@ defmodule PokerTest do
     assert Set.intersection(Enum.into(h1, HashSet.new), Enum.into(h2, HashSet.new)) == HashSet.new
   end
 
+  test "identify against a training data set" do
+    # Data samples from the file
+    # 1,10,1,11,1,13,1,12,1,1,9
+    # 2,11,2,13,2,10,2,12,2,1,9
+    # 3,12,3,11,3,13,3,10,3,1,9
+    # 4,10,4,11,4,1,4,13,4,12,9
+    # 4,1,4,13,4,12,4,11,4,10,9
+    # 1,2,1,4,1,5,1,3,1,6,8
+    # 1,9,1,12,1,10,1,11,1,13,8
+    # 2,1,2,2,2,3,2,4,2,5,8
+    # 3,5,3,6,3,9,3,7,3,8,8
+    # 4,1,4,4,4,2,4,3,4,5,8
+
+    split = fn(line) ->
+      line
+        |> String.split(~r/[,\n]/, trim: true)
+        |> Enum.map(&(String.to_integer(&1)))
+    end
+
+    parse = fn([s1,r1,s2,r2,s3,r3,s4,r4,s5,r5,c]) ->
+      suits = [s1,s2,s3,s4,s5] |> Enum.map(&(
+        case &1 do
+          1 -> :hearts
+          2 -> :spades
+          3 -> :diamonds
+          4 -> :clubs
+        end
+      ))
+      ranks = [r1,r2,r3,r4,r5] |> Enum.map(&(
+        case &1 do
+          1 -> :ace
+          n when n in 2..10 -> n
+          11 -> :jack
+          12 -> :queen
+          13 -> :king
+        end
+      ))
+      kind_of_hand = case c do
+        0 -> :high_card
+        1 -> :one_pair
+        2 -> :two_pair
+        3 -> :three_of_a_kind
+        4 -> :straight
+        5 -> :flush
+        6 -> :full_house
+        7 -> :four_of_a_kind
+        8 -> :straight_flush
+        9 -> :straight_flush
+      end
+      {Enum.zip(ranks, suits), kind_of_hand}
+    end
+
+    File.stream!("week-05-poker-02.data", [:read, :utf8])
+      |> Stream.map(split)
+      |> Stream.map(parse)
+      |> Stream.each(
+          fn({hand, expected_kind_of_hand}) ->
+            {identified_kind_of_hand, _rank} = Hand.identify(hand)
+            assert identified_kind_of_hand == expected_kind_of_hand
+          end)
+      |> Stream.run
+  end
+
   test "find a winner in a list of hands" do
     assert Hand.winner([
       {"Gabriele", ~w{2S 3S 4S 5S 6S}},
